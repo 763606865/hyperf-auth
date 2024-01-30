@@ -1,0 +1,20 @@
+{
+    "name": "junlin/hyperf-auth",
+    "description": "Adapts to hyperf framework 3.* version",
+    "type": "library",
+    "require": {
+        "lcobucci/jwt": "^5.0"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Junlin\\HyperfAuth\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "liujunlin"
+        }
+    ],
+    "minimum-stability": "dev"
+}
