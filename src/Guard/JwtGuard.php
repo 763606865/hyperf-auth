@@ -8,13 +8,14 @@ use Hyperf\Engine\Contract\Http\V2\RequestInterface;
 use Junlin\HyperfAuth\Contract\Auth\AuthenticatableInterface;
 use Junlin\HyperfAuth\Contract\Auth\GuardInterface;
 use Junlin\HyperfAuth\Contract\Auth\UserProviderInterface;
+use Junlin\HyperfAuth\Contract\Guard\EventHelpers;
 use Junlin\HyperfAuth\Contract\Guard\GuardHelpers;
 use Junlin\HyperfAuth\Jwt;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
 class JwtGuard implements GuardInterface
 {
-    use GuardHelpers;
+    use GuardHelpers, EventHelpers;
 
     protected $jwt;
 
@@ -39,11 +40,11 @@ class JwtGuard implements GuardInterface
      * @param array $options
      */
     public function __construct(
-        UserProviderInterface  $provider,
-        RequestInterface $request,
+        UserProviderInterface    $provider,
+        RequestInterface         $request,
         EventDispatcherInterface $eventDispatcher,
-        string                 $name,
-        array                  $options = [])
+        string                   $name,
+        array                    $options = [])
     {
         $this->provider = $provider;
         $this->request = $request;
@@ -57,13 +58,14 @@ class JwtGuard implements GuardInterface
      * Get the currently authenticated user.
      *
      * @return AuthenticatableInterface|null
+     * @throws \HttpInvalidParamException
      */
     public function user(): ?AuthenticatableInterface
     {
         // If we've already retrieved the user for the current request we can just
         // return it back immediately. We do not want to fetch the user data on
         // every call to this method because that would be tremendously slow.
-        if (! is_null($this->user)) {
+        if (!is_null($this->user)) {
             return $this->user;
         }
 
@@ -71,9 +73,10 @@ class JwtGuard implements GuardInterface
 
         $token = $this->getTokenForRequest();
 
-        if (! empty($token)) {
+        if (!empty($token)) {
             $identifier = $this->jwt->verify($token);
             if ($user = $this->provider->retrieveById($identifier)) {
+                $this->dispatchAuthenticatedEvent($user);
             }
         }
 
@@ -83,9 +86,9 @@ class JwtGuard implements GuardInterface
     /**
      * Get the token for the current request.
      *
-     * @return string
+     * @return string|null
      */
-    public function getTokenForRequest()
+    public function getTokenForRequest(): ?string
     {
         return $this->getBearerToken($this->request);
     }
@@ -125,7 +128,7 @@ class JwtGuard implements GuardInterface
         }
 
         if ($token = $this->jwt->generate((string)$this->user->getAuthIdentifier())) {
-
+            $this->dispatchLoginEvent($this->user);
         }
 
         return $token;
@@ -134,9 +137,10 @@ class JwtGuard implements GuardInterface
     /**
      * Get the bearer token from the request headers.
      *
+     * @param RequestInterface $request
      * @return string|null
      */
-    protected function getBearerToken(RequestInterface $request)
+    protected function getBearerToken(RequestInterface $request): ?string
     {
         $header = $request->getHeaders()['Authorization'];
 

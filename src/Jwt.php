@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Junlin\HyperfAuth;
 
+use Carbon\Carbon;
 use DateInterval;
 use DateTimeImmutable;
 use Lcobucci\JWT\Encoding\ChainedFormatter;
@@ -26,21 +27,18 @@ class Jwt
      */
     public function generate(string $user_id, int $expired = 86400, array $ext = []): string
     {
-        $tokenBuilder = (new Builder(new JoseEncoder(), ChainedFormatter::default()));
+        $tokenBuilder = new Builder(new JoseEncoder(), ChainedFormatter::default());
         $now = new DateTimeImmutable(); // 由于内部统一使用UTC时区，所以不需要转换
-        $tokenBuilder
+        $tokenBuilder = $tokenBuilder
+            ->issuedBy($this->config['app_name'] ?? '')
             ->issuedAt($now)
             ->canOnlyBeUsedAfter($now)
             ->expiresAt($now->add(new DateInterval((string)$expired)))
             ->relatedTo($user_id)
             ->identifiedBy($this->identify);
 
-        if (!empty($this->config['app_name'])) {
-            $tokenBuilder->issuedBy($this->config['app_name']);
-        }
-
         foreach ($ext as $key => $value) {
-            $tokenBuilder->withClaim($key, $value);
+            $tokenBuilder = $tokenBuilder->withClaim($key, $value);
         }
 
         return $tokenBuilder->getToken($this->algo, InMemory::plainText($this->key))->toString();
@@ -56,6 +54,8 @@ class Jwt
     }
 
     /**
+     * @param string $access_token
+     * @return string
      * @throws \HttpInvalidParamException
      */
     public function verify(string $access_token): string

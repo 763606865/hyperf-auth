@@ -7,6 +7,7 @@ namespace Junlin\HyperfAuth\Contract\Guard;
 
 use Junlin\HyperfAuth\Contract\Auth\AuthenticatableInterface;
 use Junlin\HyperfAuth\Contract\Auth\UserProviderInterface;
+use Junlin\HyperfAuth\Exception\AuthenticationException;
 
 trait GuardHelpers
 {
